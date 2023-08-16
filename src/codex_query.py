@@ -15,16 +15,18 @@ from commands import get_command_result
 MULTI_TURN = "off"
 SHELL = ""
 
-ENGINE = ''
+ENGINE = ""
 TEMPERATURE = 0
 MAX_TOKENS = 300
 
 DEBUG_MODE = False
 
 # api keys located in the same directory as this file
-API_KEYS_LOCATION = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'openaiapirc')
+API_KEYS_LOCATION = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), "openaiapirc"
+)
 
-PROMPT_CONTEXT = Path(__file__).with_name('current_context.txt')
+PROMPT_CONTEXT = Path(__file__).with_name("current_context.txt")
 
 
 # Read the secret_key from the ini file ~/.config/openaiapirc
@@ -38,13 +40,18 @@ def create_template_ini_file():
     If the ini file does not exist create it and add secret_key
     """
     if not os.path.isfile(API_KEYS_LOCATION):
-        print('# Please create a file at {} and add your secret key'.format(API_KEYS_LOCATION))
-        print('# The format is:\n')
-        print('# [openai]')
-        print('# organization_id=<organization-id>')
-        print('# secret_key=<your secret key>\n')
-        print('# engine=<engine-id>')
+        print(
+            "# Please create a file at {} and add your secret key".format(
+                API_KEYS_LOCATION
+            )
+        )
+        print("# The format is:\n")
+        print("# [openai]")
+        print("# organization_id=<organization-id>")
+        print("# secret_key=<your secret key>\n")
+        print("# engine=<engine-id>")
         sys.exit(1)
+
 
 def initialize():
     """
@@ -57,20 +64,21 @@ def initialize():
     config = configparser.ConfigParser()
     config.read(API_KEYS_LOCATION)
 
-    openai.api_key = config['openai']['secret_key'].strip('"').strip("'")
-    openai.organization = config['openai']['organization_id'].strip('"').strip("'")
-    ENGINE = config['openai']['engine'].strip('"').strip("'")
+    openai.api_key = config["openai"]["secret_key"].strip('"').strip("'")
+    openai.organization = config["openai"]["organization_id"].strip('"').strip("'")
+    ENGINE = config["openai"]["engine"].strip('"').strip("'")
 
     prompt_config = {
-        'engine': ENGINE,
-        'temperature': TEMPERATURE,
-        'max_tokens': MAX_TOKENS,
-        'shell': SHELL,
-        'multi_turn': MULTI_TURN,
-        'token_count': 0
+        "engine": ENGINE,
+        "temperature": TEMPERATURE,
+        "max_tokens": MAX_TOKENS,
+        "shell": SHELL,
+        "multi_turn": MULTI_TURN,
+        "token_count": 0,
     }
-    
+
     return PromptFile(PROMPT_CONTEXT.name, prompt_config)
+
 
 def is_sensitive_content(content):
     """
@@ -80,16 +88,16 @@ def is_sensitive_content(content):
 
     if len(content) == 0:
         return False
-    
+
     response = openai.Completion.create(
         engine="content-filter-alpha",
-        prompt = "<|endoftext|>"+content+"\n--\nLabel:",
+        prompt="<|endoftext|>" + content + "\n--\nLabel:",
         temperature=0,
         max_tokens=1,
         top_p=0,
-        logprobs=10
-        )
-    
+        logprobs=10,
+    )
+
     output_label = response["choices"][0]["text"]
 
     # This is the probability at which we evaluate that a "2" is likely real
@@ -128,7 +136,8 @@ def is_sensitive_content(content):
         if output_label not in ["0", "1", "2"]:
             output_label = "2"
 
-    return (output_label != "0")
+    return output_label != "0"
+
 
 def get_query(prompt_file):
     """
@@ -140,7 +149,7 @@ def get_query(prompt_file):
 
     # get input from terminal or stdin
     if DEBUG_MODE:
-        entry = input("prompt: ") + '\n'
+        entry = input("prompt: ") + "\n"
     else:
         entry = sys.stdin.read()
     # first we check if the input is a command
@@ -152,80 +161,113 @@ def get_query(prompt_file):
     else:
         sys.exit(0)
 
+
 def detect_shell():
     global SHELL
     global PROMPT_CONTEXT
 
     parent_process_name = psutil.Process(os.getppid()).name()
-    POWERSHELL_MODE = bool(re.fullmatch('pwsh|pwsh.exe|powershell.exe', parent_process_name))
-    BASH_MODE = bool(re.fullmatch('bash|bash.exe', parent_process_name))
-    ZSH_MODE = bool(re.fullmatch('zsh|zsh.exe', parent_process_name))
+    POWERSHELL_MODE = bool(
+        re.fullmatch("pwsh|pwsh.exe|powershell.exe", parent_process_name)
+    )
+    BASH_MODE = bool(re.fullmatch("bash|bash.exe", parent_process_name))
+    ZSH_MODE = bool(re.fullmatch("zsh|zsh.exe", parent_process_name))
 
-    SHELL = "powershell" if POWERSHELL_MODE else "bash" if BASH_MODE else "zsh" if ZSH_MODE else "unknown"
+    SHELL = (
+        "powershell"
+        if POWERSHELL_MODE
+        else "bash"
+        if BASH_MODE
+        else "zsh"
+        if ZSH_MODE
+        else "unknown"
+    )
 
-    shell_prompt_file = Path(os.path.join(os.path.dirname(__file__), "..", "contexts", "{}-context.txt".format(SHELL)))
+    shell_prompt_file = Path(
+        os.path.join(
+            os.path.dirname(__file__), "..", "contexts", "{}-context.txt".format(SHELL)
+        )
+    )
 
     if shell_prompt_file.is_file():
         PROMPT_CONTEXT = shell_prompt_file
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     detect_shell()
     prompt_file = initialize()
 
     try:
         user_query, prompt_file = get_query(prompt_file)
-        
-        config = prompt_file.config if prompt_file else {
-            'engine': ENGINE,
-            'temperature': TEMPERATURE,
-            'max_tokens': MAX_TOKENS,
-            'shell': SHELL,
-            'multi_turn': MULTI_TURN,
-            'token_count': 0
-        }
+
+        config = (
+            prompt_file.config
+            if prompt_file
+            else {
+                "engine": ENGINE,
+                "temperature": TEMPERATURE,
+                "max_tokens": MAX_TOKENS,
+                "shell": SHELL,
+                "multi_turn": MULTI_TURN,
+                "token_count": 0,
+            }
+        )
 
         # use query prefix to prime Codex for correct scripting language
         prefix = ""
         # prime codex for the corresponding shell type
-        if config['shell'] == "zsh":
-            prefix = '#!/bin/zsh\n\n'
-        elif config['shell'] == "bash":
-            prefix = '#!/bin/bash\n\n'
-        elif config['shell'] == "powershell":
-            prefix = '<# powershell #>\n\n'
-        elif config['shell'] == "unknown":
+        if config["shell"] == "zsh":
+            prefix = "#!/bin/zsh\n\n"
+        elif config["shell"] == "bash":
+            prefix = "#!/bin/bash\n\n"
+        elif config["shell"] == "powershell":
+            prefix = "<# powershell #>\n\n"
+        elif config["shell"] == "unknown":
             print("\n#\tUnsupported shell type, please use # set shell <shell>")
         else:
-            prefix = '#' + config['shell'] + '\n\n'
+            prefix = "#" + config["shell"] + "\n\n"
 
-        codex_query = prefix + prompt_file.read_prompt_file(user_query) + user_query + '\n'
+        codex_query = (
+            prefix + prompt_file.read_prompt_file(user_query) + user_query + "\n"
+        )
 
         # get the response from codex
         messages = [
-            {'role': 'system', 'content': 'Complete the following shell file, only reply with one command'},
-            {'role': 'user', 'content': codex_query}
+            {
+                "role": "system",
+                "content": "Complete the following shell file, only reply with one command",
+            },
+            {"role": "user", "content": codex_query},
         ]
-        response = openai.ChatCompletion.create(model=config['engine'], messages=messages, temperature=config['temperature'], max_tokens=config['max_tokens'], stop="#")
+        response = openai.ChatCompletion.create(
+            model=config["engine"],
+            messages=messages,
+            temperature=config["temperature"],
+            max_tokens=config["max_tokens"],
+            stop="#",
+        )
 
-        completion_all = response['choices'][0]['message']['content'].strip()
+        completion_all = response["choices"][0]["message"]["content"].strip()
 
-        if is_sensitive_content(user_query + '\n' + completion_all):
+        if is_sensitive_content(user_query + "\n" + completion_all):
             print("\n#   Sensitive content detected, response has been redacted")
         else:
-            print('\n', completion_all)
+            print("\n", completion_all)
 
             # append output to prompt context file
-            if config['multi_turn'] == "on":
+            if config["multi_turn"] == "on":
                 if completion_all != "" or len(completion_all) > 0:
                     prompt_file.add_input_output_pair(user_query, completion_all)
-        
+
     except FileNotFoundError:
-        print('\n\n# Codex CLI error: Prompt file not found, try again')
+        print("\n\n# Codex CLI error: Prompt file not found, try again")
     except openai.error.RateLimitError:
-        print('\n\n# Codex CLI error: Rate limit exceeded, try later')
+        print("\n\n# Codex CLI error: Rate limit exceeded, try later")
     except openai.error.APIConnectionError:
-        print('\n\n# Codex CLI error: API connection error, are you connected to the internet?')
+        print(
+            "\n\n# Codex CLI error: API connection error, are you connected to the internet?"
+        )
     except openai.error.InvalidRequestError as e:
-        print('\n\n# Codex CLI error: Invalid request - ' + str(e))
+        print("\n\n# Codex CLI error: Invalid request - " + str(e))
     except Exception as e:
-        print('\n\n# Codex CLI error: Unexpected exception - ' + str(e))
+        print("\n\n# Codex CLI error: Unexpected exception - " + str(e))
